@@ -1,0 +1,12 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "rootDir": "./src",
+    "outDir": "./dist",
+    "baseUrl": ".",
+    "paths": {
+      "@wanderprint/shared": ["../../packages/shared/src"]
+    }
+  },
+  "include": ["src", "prisma/seed.ts"]
+}

@@ -1,0 +1,265 @@
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["postgresqlExtensions"]
+}
+
+datasource db {
+  provider   = "postgresql"
+  url        = env("DATABASE_URL")
+  extensions = [postgis]
+}
+
+// ─────────────────────── KULLANICI ───────────────────────
+
+model User {
+  id              String    @id @default(uuid()) @db.Uuid
+  email           String    @unique
+  passwordHash    String?                        // OAuth-only kullanıcılarda null
+  username        String    @unique
+  displayName     String
+  avatarUrl       String?
+  bio             String?   @db.VarChar(280)
+  homeCountry     String?   @db.Char(2)          // ISO 3166-1 alpha-2
+  emailVerifiedAt DateTime?
+  isPrivate       Boolean   @default(false)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  deletedAt       DateTime?                      // soft delete
+
+  routes       Route[]
+  sessions     Session[]
+  oauthAccounts OAuthAccount[]
+  following    Follow[]         @relation("follower")
+  followers    Follow[]         @relation("following")
+  likes        Like[]
+  comments     Comment[]
+  countryStats UserCountryStat[]
+  stamps       PassportStamp[]
+
+  @@index([username])
+  @@index([email])
+}
+
+model Session {
+  id               String   @id @default(uuid()) @db.Uuid
+  userId           String   @db.Uuid
+  refreshTokenHash String   @unique            // token asla düz saklanmaz
+  familyId         String   @db.Uuid           // rotation zinciri
+  deviceName       String?
+  deviceId         String?
+  ipAddress        String?
+  expiresAt        DateTime
+  revokedAt        DateTime?
+  createdAt        DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([familyId])
+}
+
+model OAuthAccount {
+  id             String        @id @default(uuid()) @db.Uuid
+  userId         String        @db.Uuid
+  provider       OAuthProvider
+  providerUserId String
+  createdAt      DateTime      @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerUserId])
+}
+
+enum OAuthProvider {
+  GOOGLE
+  APPLE
+}
+
+// ─────────────────────── ROTA ───────────────────────
+
+model Route {
+  id             String      @id @default(uuid()) @db.Uuid
+  userId         String      @db.Uuid
+  title          String      @db.VarChar(120)
+  description    String?     @db.VarChar(2000)
+  source         RouteSource                       // GPS_TRACKED | MANUAL_DRAWN
+  visibility     Visibility  @default(PRIVATE)
+  clientId       String      @unique @db.Uuid     // idempotency
+
+  // Coğrafi veri — PostGIS (Prisma Unsupported ile yönetilir)
+  path           Unsupported("geography(LineString, 4326)")
+  simplifiedPath Unsupported("geography(LineString, 4326)")?  // liste görünümü için
+  bbox           Unsupported("geography(Polygon, 4326)")?
+  startPoint     Unsupported("geography(Point, 4326)")
+
+  // Türetilmiş metrikler (yazma anında hesaplanır)
+  distanceMeters  Float
+  durationSeconds Int?
+  elevationGainM  Float?
+  pointCount      Int
+
+  startedAt     DateTime
+  endedAt       DateTime?
+  coverPhotoUrl String?
+
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
+  deletedAt  DateTime?
+
+  user       User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  memories   Memory[]
+  countries  RouteCountry[]
+  likes      Like[]
+  comments   Comment[]
+  shareLinks ShareLink[]
+
+  @@index([userId, startedAt(sort: Desc)])
+  @@index([visibility, createdAt(sort: Desc)])
+}
+
+enum RouteSource {
+  GPS_TRACKED
+  MANUAL_DRAWN
+  IMPORTED_GPX
+}
+
+enum Visibility {
+  PRIVATE
+  FOLLOWERS
+  PUBLIC
+}
+
+// Rota ↔ Ülke (bir rota birden fazla ülkeden geçebilir)
+model RouteCountry {
+  routeId        String @db.Uuid
+  countryCode    String @db.Char(2)
+  distanceMeters Float                    // o ülkedeki kısmın uzunluğu
+
+  route   Route   @relation(fields: [routeId],     references: [id], onDelete: Cascade)
+  country Country @relation(fields: [countryCode], references: [code])
+
+  @@id([routeId, countryCode])
+}
+
+model Country {
+  code      String  @id @db.Char(2)
+  nameEn    String
+  nameTr    String
+  continent String
+  geometry  Unsupported("geography(MultiPolygon, 4326)")
+
+  routes RouteCountry[]
+  stats  UserCountryStat[]
+}
+
+// ─────────────────────── ANI PİNLERİ ───────────────────────
+
+model Memory {
+  id                String     @id @default(uuid()) @db.Uuid
+  routeId           String     @db.Uuid
+  type              MemoryType
+  location          Unsupported("geography(Point, 4326)")
+  distanceFromStart Float                  // replay senkronizasyonu için
+  caption           String?    @db.VarChar(1000)
+  mediaUrl          String?
+  thumbnailUrl      String?
+  capturedAt        DateTime
+  createdAt         DateTime   @default(now())
+
+  route Route @relation(fields: [routeId], references: [id], onDelete: Cascade)
+
+  @@index([routeId, distanceFromStart])
+}
+
+enum MemoryType {
+  PHOTO
+  NOTE
+  AUDIO
+}
+
+// ─────────────────────── İSTATİSTİK (denormalize) ───────────────────────
+
+model UserCountryStat {
+  userId         String   @db.Uuid
+  countryCode    String   @db.Char(2)
+  totalDistanceM Float    @default(0)
+  routeCount     Int      @default(0)
+  daysSpent      Int      @default(0)
+  citiesVisited  Int      @default(0)
+  firstVisitAt   DateTime
+  lastVisitAt    DateTime
+  intensityScore Float    @default(0)     // 0–1, harita rengi bu değerden
+
+  user    User    @relation(fields: [userId],      references: [id], onDelete: Cascade)
+  country Country @relation(fields: [countryCode], references: [code])
+
+  @@id([userId, countryCode])
+}
+
+model PassportStamp {
+  id          String    @id @default(uuid()) @db.Uuid
+  userId      String    @db.Uuid
+  countryCode String    @db.Char(2)
+  tier        StampTier                    // ziyaret derinliğine göre
+  earnedAt    DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, countryCode])
+}
+
+enum StampTier {
+  VISITOR
+  EXPLORER
+  RESIDENT
+}
+
+// ─────────────────────── SOSYAL ───────────────────────
+
+model Follow {
+  followerId  String   @db.Uuid
+  followingId String   @db.Uuid
+  createdAt   DateTime @default(now())
+
+  follower  User @relation("follower",  fields: [followerId],  references: [id], onDelete: Cascade)
+  following User @relation("following", fields: [followingId], references: [id], onDelete: Cascade)
+
+  @@id([followerId, followingId])
+  @@index([followingId])
+}
+
+model Like {
+  userId    String   @db.Uuid
+  routeId   String   @db.Uuid
+  createdAt DateTime @default(now())
+
+  user  User  @relation(fields: [userId],  references: [id], onDelete: Cascade)
+  route Route @relation(fields: [routeId], references: [id], onDelete: Cascade)
+
+  @@id([userId, routeId])
+}
+
+model Comment {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @db.Uuid
+  routeId   String   @db.Uuid
+  body      String   @db.VarChar(1000)
+  createdAt DateTime @default(now())
+  deletedAt DateTime?
+
+  user  User  @relation(fields: [userId],  references: [id], onDelete: Cascade)
+  route Route @relation(fields: [routeId], references: [id], onDelete: Cascade)
+
+  @@index([routeId, createdAt(sort: Desc)])
+}
+
+model ShareLink {
+  id        String   @id @default(uuid()) @db.Uuid
+  routeId   String   @db.Uuid
+  slug      String   @unique                 // kısa, tahmin edilemez
+  expiresAt DateTime?
+  viewCount Int      @default(0)
+  createdAt DateTime @default(now())
+
+  route Route @relation(fields: [routeId], references: [id], onDelete: Cascade)
+}
