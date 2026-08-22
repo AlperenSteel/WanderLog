@@ -1,7 +1,7 @@
 import { View, Text, StyleSheet, ActivityIndicator } from 'react-native';
 import { useQuery } from '@tanstack/react-query';
-import { fetchHealth } from '../../src/api/health';
-import { colors, typography, spacing } from '../../src/theme';
+import { fetchHealth } from '../../api/health';
+import { colors, typography, spacing } from '../../theme';
 
 export default function MapScreen() {
   const { data, isLoading, isError } = useQuery({

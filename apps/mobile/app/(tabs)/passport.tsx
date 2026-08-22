@@ -1,5 +1,5 @@
 import { View, Text, StyleSheet } from 'react-native';
-import { colors, typography, spacing } from '../../src/theme';
+import { colors, typography, spacing } from '../../theme';
 
 export default function PassportScreen() {
   return (
