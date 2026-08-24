@@ -27,14 +27,14 @@ importers:
         specifier: ^5.5.4
         version: 5.9.3
 
-  apps/api:
+  backend:
     dependencies:
       '@prisma/client':
         specifier: ^5.20.0
         version: 5.22.0(prisma@5.22.0)
       '@wanderprint/shared':
         specifier: workspace:*
-        version: link:../../packages/shared
+        version: link:../shared
       argon2:
         specifier: ^0.40.3
         version: 0.40.3
@@ -121,14 +121,14 @@ importers:
         specifier: ^2.1.1
         version: 2.1.9(@types/node@22.20.1)(lightningcss@1.33.0)(terser@5.50.0)
 
-  apps/mobile:
+  frontend:
     dependencies:
       '@tanstack/react-query':
         specifier: ^5.56.2
         version: 5.102.0(react@19.2.3)
       '@wanderprint/shared':
         specifier: workspace:*
-        version: link:../../packages/shared
+        version: link:../shared
       axios:
         specifier: ^1.7.7
         version: 1.19.0
@@ -167,7 +167,7 @@ importers:
         specifier: ~6.0.3
         version: 6.0.3
 
-  packages/shared:
+  shared:
     dependencies:
       zod:
         specifier: ^3.23.8

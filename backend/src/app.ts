@@ -8,7 +8,7 @@ import { env } from './config/env';
 import { logger } from './lib/logger';
 import { requestId } from './middleware/requestId';
 import { errorHandler } from './middleware/errorHandler';
-import { healthRouter } from './modules/health/health.routes';
+import { healthRouter } from './modules/health/health.router';
 
 export function createApp() {
   const app = express();
