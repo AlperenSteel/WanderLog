@@ -1,4 +1,4 @@
-# Wanderprint
+# WanderLOG
 
 > Seyahat rotalarını kaydeden, dünya haritası üzerinde görselleştiren ve paylaşılabilir bir hatıra defterine dönüştüren mobil uygulama.
 
