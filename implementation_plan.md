@@ -1,4 +1,10 @@
-# Wanderprint — Modül 0: Temel Altyapı ve Ortam Kurulumu
+# ✅ Modül 0: Temel Altyapı ve Ortam Kurulumu — TAMAMLANDI
+
+> **Not:** Bu plan tamamlandı. Nihai klasör yapısı planda yazandan farklılaştı:
+> `apps/api` → `backend/` · `apps/mobile` → `frontend/` · `packages/shared` → `shared/`
+> Güncel yapı için: [docs/DIZIN_REHBERI.md](./docs/DIZIN_REHBERI.md)
+
+---
 
 Bu plan, `wanderlog.md` belgesinin **Modül 0** bölümünü uygular. Amaç her iki tarafın (API + Mobil) çalışan, tip paylaşan bir iskelete sahip olması.
 
