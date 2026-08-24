@@ -2,17 +2,14 @@
 
 > Seyahat rotalarını kaydeden, dünya haritası üzerinde görselleştiren ve paylaşılabilir bir hatıra defterine dönüştüren mobil uygulama.
 
-## Monorepo Yapısı
+## Yapı
 
 ```
-wanderprint/
-├── apps/
-│   ├── api/        # Express + TypeScript + Prisma + PostGIS
-│   └── mobile/     # Expo + React Native + TypeScript
-├── packages/
-│   └── shared/     # Zod şemaları + paylaşılan tipler + geo yardımcıları
-└── docs/
-    └── adr/        # Mimari karar kayıtları
+WanderLog/
+├── backend/    # Express + TypeScript + Prisma + PostGIS
+├── frontend/   # Expo + React Native + TypeScript
+├── shared/     # Zod şemaları + paylaşılan tipler + geo yardımcıları
+└── docs/       # Mimari karar kayıtları, dizin rehberi
 ```
 
 ## Ön Koşullar
@@ -28,13 +25,13 @@ wanderprint/
 pnpm install
 
 # 2. Ortam değişkenlerini ayarla
-cp .env.example apps/api/.env
+cp .env.example backend/.env
 
 # 3. Veritabanını başlat (PostGIS + Redis)
 docker-compose up -d
 
 # 4. DB migration
-pnpm --filter @wanderprint/api db:migrate
+pnpm --filter @wanderprint/backend db:migrate
 
 # 5. Geliştirme sunucusunu başlat
 pnpm dev
@@ -44,7 +41,7 @@ pnpm dev
 
 | # | Modül | Durum |
 |---|---|---|
-| 0 | Temel Altyapı ve Ortam | 🚧 |
+| 0 | Temel Altyapı ve Ortam | ✅ |
 | 1 | Veri Modeli ve Coğrafi Temel | ⏳ |
 | 2 | Kimlik Doğrulama | ⏳ |
 | 3 | GPS Rota Kaydı | ⏳ |
@@ -53,4 +50,4 @@ pnpm dev
 | 6 | Sosyal Özellikler | ⏳ |
 | 7 | Medya ve Anı Pinleri | ⏳ |
 
-Ayrıntılı yol haritası için: [wanderlog.md](./wanderlog.md)
+Ayrıntılı yol haritası: [wanderlog.md](./wanderlog.md) · Dizin rehberi: [docs/DIZIN_REHBERI.md](./docs/DIZIN_REHBERI.md)
