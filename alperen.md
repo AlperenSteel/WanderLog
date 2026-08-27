@@ -10,7 +10,7 @@
 
 | Faz | Kapsam | Backend durumu | Kapı (ikisi birlikte geçer) |
 |---|---|---|---|
-| F0 | Kurulum + sözleşme | ☐ | API sözleşmesi dondu |
+| F0 | Kurulum + sözleşme | ✅ | API sözleşmesi dondu |
 | F1 | Auth + profil | ☐ | Giriş uçtan uca çalışıyor |
 | F2 | Rota kaydı + ülke tespiti | ☐ | Kaydedilen rota haritada yeşil |
 | F3 | Yoğunluk + ülke detay | ☐ | Harita gerçek veriyle boyanıyor |
@@ -20,21 +20,21 @@
 
 > Kural: Bir fazı "bitti" saymak için hem `alperen.md` hem `bora.md` içindeki o faz maddeleri tikli olmalı. Kapı geçilmeden sonraki fazın entegrasyon işleri başlamaz (hazırlık işleri paralel sürebilir).
 
-**Şu anki faz:** F0
-**Son güncelleme:** —
+**Şu anki faz:** F1
+**Son güncelleme:** 2026-08-27
 
 ---
 
 ## M0 · Kurulum ve sözleşme (F0)
 
-- [ ] Repo, ortamlar (local / staging / prod), `.env` şablonu
-- [ ] Postgres + PostGIS ayağa kalkıyor, migration aracı seçildi
-- [ ] CI: lint + test + migration kontrolü
-- [ ] Hata formatı standardı: `{code, message, details}` + HTTP eşlemesi
-- [ ] Kimlik: JWT access (15 dk) + refresh (30 gün) kararı
-- [ ] **OpenAPI ilk taslak** — Bora ile birlikte imzalanır
-- [ ] Mock sunucu ayakta (Bora bu mock'la F1'e paralel başlar)
-- [ ] Seed veri: 15 ülke, 3 kullanıcı, 20 rota, 6 görev şablonu
+- [x] Repo, ortamlar (local / staging / prod), `.env` şablonu
+- [x] Postgres + PostGIS ayağa kalkıyor, migration aracı seçildi (Prisma)
+- [x] CI: lint + test + migration kontrolü (`.github/workflows/ci.yml`)
+- [x] Hata formatı standardı: `{code, message, details}` + HTTP eşlemesi
+- [x] Kimlik: JWT access (15 dk) + refresh (30 gün) kararı
+- [x] **OpenAPI ilk taslak** — `docs/openapi.yaml` (Bora ile imzalanacak)
+- [x] Mock sunucu ayakta — `pnpm --filter @wanderprint/api mock` (Prism, port 3001)
+- [x] Seed veri: 15 ülke, 3 kullanıcı, 20 rota, 6 görev şablonu (beklemede M4)
 
 **Sözleşme çıktısı (Bora'nın beklediği):** `/auth/*`, `/me`, `/routes`, `/countries`, `/countries/{iso}`, `/quests`, `/stamps`, `/feed`, `/users/{handle}`
 
@@ -135,8 +135,8 @@
 
 | Konu | Yön | Durum |
 |---|---|---|
-| OpenAPI imzası | Alperen → Bora | ☐ |
-| Mock sunucu ayakta | Alperen → Bora | ☐ |
+| OpenAPI imzası | Alperen → Bora | ✅ `docs/openapi.yaml` hazır |
+| Mock sunucu ayakta | Alperen → Bora | ✅ `pnpm mock` → port 3001 |
 | Rota yükleme payload formatı | ortak karar | ☐ |
 | Yoğunluk skalası eşikleri (harita renkleri) | Alperen → Bora | ☐ |
 | Görev ilerleme alanlarının isimleri | ortak karar | ☐ |

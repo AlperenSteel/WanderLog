@@ -1,0 +1,1130 @@
+openapi: 3.1.0
+info:
+  title: Wanderprint API
+  version: 0.1.0
+  description: |
+    Wanderprint backend API — seyahat rotaları, yoğunluk haritası, pasaport damgaları.
+    Bu taslak M0 sözleşmesini tanımlar; Bora bu spec'e göre mock'la çalışır.
+  contact:
+    name: Alperen (Backend)
+
+servers:
+  - url: http://localhost:3000/api/v1
+    description: Local dev
+  - url: http://localhost:3001
+    description: Mock sunucu (Prism)
+
+# ─────────────────────── SECURITY ───────────────────────
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  # ─────────────────────── SHARED SCHEMAS ───────────────────────
+  schemas:
+    # Standart hata zarfı
+    ApiError:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: object
+          required: [code, message]
+          properties:
+            code:
+              type: string
+              example: INVALID_CREDENTIALS
+            message:
+              type: string
+              example: E-posta veya şifre yanlış
+            details:
+              type: object
+              additionalProperties: true
+
+    # Sayfalama meta
+    PaginationMeta:
+      type: object
+      properties:
+        nextCursor:
+          type: string
+          nullable: true
+          example: eyJpZCI6ImFiYyJ9
+
+    # ── Kullanıcı ──
+    UserPublic:
+      type: object
+      required: [id, username, displayName, isPrivate, createdAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+          example: 550e8400-e29b-41d4-a716-446655440000
+        username:
+          type: string
+          example: alice_wanders
+        displayName:
+          type: string
+          example: Alice W.
+        avatarUrl:
+          type: string
+          nullable: true
+          example: https://cdn.wanderprint.app/avatars/alice.jpg
+        bio:
+          type: string
+          nullable: true
+          example: Dünyanın her köşesindeyim 🌍
+        isPrivate:
+          type: boolean
+          example: false
+        createdAt:
+          type: string
+          format: date-time
+
+    UserMe:
+      allOf:
+        - $ref: '#/components/schemas/UserPublic'
+        - type: object
+          required: [email]
+          properties:
+            email:
+              type: string
+              format: email
+              example: alice@example.com
+            homeCountry:
+              type: string
+              nullable: true
+              example: TR
+            emailVerifiedAt:
+              type: string
+              format: date-time
+              nullable: true
+
+    # ── Auth ──
+    TokenPair:
+      type: object
+      required: [accessToken, refreshToken, expiresIn]
+      properties:
+        accessToken:
+          type: string
+          example: eyJhbGciOiJIUzI1NiJ9...
+        refreshToken:
+          type: string
+          example: eyJhbGciOiJIUzI1NiJ9...
+        expiresIn:
+          type: integer
+          description: Saniye cinsinden access token ömrü
+          example: 900
+
+    # ── Rota ──
+    TrackPoint:
+      type: object
+      required: [lat, lng, t]
+      properties:
+        lat:
+          type: number
+          minimum: -90
+          maximum: 90
+          example: 41.0082
+        lng:
+          type: number
+          minimum: -180
+          maximum: 180
+          example: 28.9784
+        ele:
+          type: number
+          description: Metre cinsinden yükseklik
+          example: 42.5
+        t:
+          type: integer
+          description: Unix timestamp (ms)
+          example: 1720000000000
+        accuracy:
+          type: number
+          description: Metre cinsinden GPS doğruluğu
+          example: 5.2
+
+    RouteListItem:
+      type: object
+      required: [id, title, source, visibility, distanceMeters, pointCount, startedAt, countries, likeCount, commentCount, user]
+      properties:
+        id:
+          type: string
+          format: uuid
+        title:
+          type: string
+          example: Boğaz Yürüyüşü
+        description:
+          type: string
+          nullable: true
+        source:
+          type: string
+          enum: [GPS_TRACKED, MANUAL_DRAWN, IMPORTED_GPX]
+        visibility:
+          type: string
+          enum: [PRIVATE, FOLLOWERS, PUBLIC]
+        distanceMeters:
+          type: number
+          example: 8432.5
+        durationSeconds:
+          type: integer
+          nullable: true
+          example: 5400
+        pointCount:
+          type: integer
+          example: 540
+        startedAt:
+          type: string
+          format: date-time
+        endedAt:
+          type: string
+          format: date-time
+          nullable: true
+        coverPhotoUrl:
+          type: string
+          nullable: true
+        countries:
+          type: array
+          items:
+            type: string
+          example: [TR]
+        likeCount:
+          type: integer
+          example: 12
+        commentCount:
+          type: integer
+          example: 3
+        user:
+          $ref: '#/components/schemas/UserPublic'
+
+    # ── Ülke ──
+    CountryMapItem:
+      type: object
+      required: [iso, density, totalDistance, stampLevel]
+      properties:
+        iso:
+          type: string
+          example: TR
+        density:
+          type: number
+          minimum: 0
+          maximum: 1
+          description: Yoğunluk skoru (harita rengi için 0–1)
+          example: 0.72
+        totalDistance:
+          type: number
+          description: Metre cinsinden toplam mesafe
+          example: 142000
+        stampLevel:
+          type: string
+          enum: [VISITOR, EXPLORER, RESIDENT]
+          nullable: true
+          example: EXPLORER
+
+    CountryDetail:
+      type: object
+      required: [iso, nameEn, nameTr, continent, density, totalDistanceM, routeCount, daysSpent, citiesVisited]
+      properties:
+        iso:
+          type: string
+          example: TR
+        nameEn:
+          type: string
+          example: Turkey
+        nameTr:
+          type: string
+          example: Türkiye
+        continent:
+          type: string
+          example: Asia
+        density:
+          type: number
+          example: 0.72
+        totalDistanceM:
+          type: number
+          example: 142000
+        routeCount:
+          type: integer
+          example: 14
+        daysSpent:
+          type: integer
+          example: 22
+        citiesVisited:
+          type: integer
+          example: 4
+        firstVisitAt:
+          type: string
+          format: date-time
+        lastVisitAt:
+          type: string
+          format: date-time
+        stamp:
+          type: string
+          enum: [VISITOR, EXPLORER, RESIDENT]
+          nullable: true
+
+    # ── Quest ──
+    QuestProgress:
+      type: object
+      required: [id, type, title, progressPercent, completed]
+      properties:
+        id:
+          type: string
+          format: uuid
+        type:
+          type: string
+          enum: [steps, night_walk, landmarks, local]
+        title:
+          type: string
+          example: 10.000 Adım
+        progressPercent:
+          type: number
+          minimum: 0
+          maximum: 100
+          example: 60
+        completed:
+          type: boolean
+          example: false
+        completedAt:
+          type: string
+          format: date-time
+          nullable: true
+
+    # ── Stamp ──
+    PassportStamp:
+      type: object
+      required: [countryCode, tier, earnedAt]
+      properties:
+        countryCode:
+          type: string
+          example: TR
+        tier:
+          type: string
+          enum: [VISITOR, EXPLORER, RESIDENT]
+        earnedAt:
+          type: string
+          format: date-time
+
+    # ── Feed ──
+    FeedItem:
+      type: object
+      required: [id, type, createdAt, user, route]
+      properties:
+        id:
+          type: string
+          format: uuid
+        type:
+          type: string
+          enum: [NEW_ROUTE, STAMP_EARNED]
+        createdAt:
+          type: string
+          format: date-time
+        user:
+          $ref: '#/components/schemas/UserPublic'
+        route:
+          $ref: '#/components/schemas/RouteListItem'
+        stamp:
+          $ref: '#/components/schemas/PassportStamp'
+          nullable: true
+
+    # ── Stats ──
+    UserStats:
+      type: object
+      required: [totalDistanceM, totalRoutes, countriesVisited, daysOnRoad]
+      properties:
+        totalDistanceM:
+          type: number
+          example: 482300
+        totalRoutes:
+          type: integer
+          example: 47
+        countriesVisited:
+          type: integer
+          example: 12
+        daysOnRoad:
+          type: integer
+          example: 88
+        yearOverYearPercent:
+          type: number
+          nullable: true
+          description: Geçen yıla göre mesafe değişimi (%)
+          example: 23.5
+
+# ─────────────────────── PATHS ───────────────────────
+paths:
+
+  # ── Health ──
+  /health:
+    get:
+      tags: [Health]
+      summary: Sunucu sağlık kontrolü
+      operationId: getHealth
+      security: []
+      responses:
+        '200':
+          description: Sunucu ve bağımlılıklar sağlıklı
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: ok
+                  db:
+                    type: string
+                    example: ok
+                  redis:
+                    type: string
+                    example: ok
+                  uptime:
+                    type: number
+                    example: 42.3
+
+  # ── Auth ──
+  /auth/register:
+    post:
+      tags: [Auth]
+      summary: Yeni kullanıcı kaydı
+      operationId: register
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password, username, displayName]
+              properties:
+                email:
+                  type: string
+                  format: email
+                  example: alice@example.com
+                password:
+                  type: string
+                  minLength: 8
+                  maxLength: 72
+                  example: Secure123!
+                username:
+                  type: string
+                  minLength: 3
+                  maxLength: 30
+                  pattern: '^[a-z0-9_]+$'
+                  example: alice_wanders
+                displayName:
+                  type: string
+                  minLength: 1
+                  maxLength: 60
+                  example: Alice W.
+      responses:
+        '201':
+          description: Kayıt başarılı
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      user:
+                        $ref: '#/components/schemas/UserMe'
+                      tokens:
+                        $ref: '#/components/schemas/TokenPair'
+        '409':
+          description: E-posta veya kullanıcı adı alınmış
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '422':
+          description: Doğrulama hatası
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+
+  /auth/login:
+    post:
+      tags: [Auth]
+      summary: Giriş yap
+      operationId: login
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email:
+                  type: string
+                  format: email
+                  example: alice@example.com
+                password:
+                  type: string
+                  example: Secure123!
+      responses:
+        '200':
+          description: Giriş başarılı
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      user:
+                        $ref: '#/components/schemas/UserMe'
+                      tokens:
+                        $ref: '#/components/schemas/TokenPair'
+        '401':
+          description: Geçersiz kimlik bilgileri
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+              example:
+                error:
+                  code: INVALID_CREDENTIALS
+                  message: E-posta veya şifre yanlış
+                  details:
+                    remainingAttempts: 4
+
+  /auth/refresh:
+    post:
+      tags: [Auth]
+      summary: Access token yenile
+      operationId: refreshToken
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [refreshToken]
+              properties:
+                refreshToken:
+                  type: string
+      responses:
+        '200':
+          description: Yeni token çifti
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/TokenPair'
+        '401':
+          description: Geçersiz veya süresi dolmuş refresh token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+
+  /auth/logout:
+    post:
+      tags: [Auth]
+      summary: Oturumu kapat (refresh token iptal)
+      operationId: logout
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [refreshToken]
+              properties:
+                refreshToken:
+                  type: string
+      responses:
+        '204':
+          description: Oturum kapatıldı
+
+  /auth/username-available:
+    get:
+      tags: [Auth]
+      summary: Kullanıcı adı müsaitlik kontrolü
+      operationId: checkUsernameAvailable
+      security: []
+      parameters:
+        - name: username
+          in: query
+          required: true
+          schema:
+            type: string
+            minLength: 3
+            maxLength: 30
+            pattern: '^[a-z0-9_]+$'
+          example: alice_wanders
+      responses:
+        '200':
+          description: Müsaitlik durumu
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      available:
+                        type: boolean
+                        example: true
+
+  # ── Me ──
+  /me:
+    get:
+      tags: [Users]
+      summary: Kendi profilimi getir
+      operationId: getMe
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Kullanıcı profili
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/UserMe'
+
+    patch:
+      tags: [Users]
+      summary: Profilimi güncelle
+      operationId: updateMe
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                displayName:
+                  type: string
+                  maxLength: 60
+                username:
+                  type: string
+                  minLength: 3
+                  maxLength: 30
+                  pattern: '^[a-z0-9_]+$'
+                bio:
+                  type: string
+                  maxLength: 280
+                  nullable: true
+                homeCountry:
+                  type: string
+                  maxLength: 2
+                  nullable: true
+      responses:
+        '200':
+          description: Güncellenmiş profil
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/UserMe'
+
+  /me/stats:
+    get:
+      tags: [Users]
+      summary: Kendi istatistiklerim
+      operationId: getMyStats
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Kullanıcı istatistikleri
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/UserStats'
+
+  /me/passport:
+    get:
+      tags: [Stamps]
+      summary: Pasaportumdaki tüm damgalar
+      operationId: getMyPassport
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Kazanılan / bekleyen / kilitli damgalar
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      earned:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/PassportStamp'
+                      pendingQuests:
+                        type: array
+                        items:
+                          type: string
+                        description: Görev bekleyen ülke ISO kodları
+                        example: [DE, FR]
+                      locked:
+                        type: array
+                        items:
+                          type: string
+                        description: Hiç gidilmemiş / kilitsiz ülke kodları
+                        example: [JP, US]
+
+  # ── Routes ──
+  /routes:
+    get:
+      tags: [Routes]
+      summary: Rotalarımı listele
+      operationId: listRoutes
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: cursor
+          in: query
+          schema:
+            type: string
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+        - name: visibility
+          in: query
+          schema:
+            type: string
+            enum: [PRIVATE, FOLLOWERS, PUBLIC]
+      responses:
+        '200':
+          description: Rota listesi
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/RouteListItem'
+                  meta:
+                    $ref: '#/components/schemas/PaginationMeta'
+
+    post:
+      tags: [Routes]
+      summary: Yeni rota kaydet
+      operationId: createRoute
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [clientId, title, source, points, startedAt]
+              properties:
+                clientId:
+                  type: string
+                  format: uuid
+                  description: İdempotency key — aynı clientId iki kez gönderilirse tek kayıt oluşur
+                title:
+                  type: string
+                  maxLength: 120
+                  example: Kapalıçarşı Turu
+                description:
+                  type: string
+                  maxLength: 2000
+                  nullable: true
+                source:
+                  type: string
+                  enum: [GPS_TRACKED, MANUAL_DRAWN, IMPORTED_GPX]
+                visibility:
+                  type: string
+                  enum: [PRIVATE, FOLLOWERS, PUBLIC]
+                  default: PRIVATE
+                points:
+                  type: array
+                  minItems: 2
+                  maxItems: 50000
+                  items:
+                    $ref: '#/components/schemas/TrackPoint'
+                startedAt:
+                  type: string
+                  format: date-time
+                endedAt:
+                  type: string
+                  format: date-time
+                  nullable: true
+      responses:
+        '201':
+          description: Rota kaydedildi
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/RouteListItem'
+        '409':
+          description: Aynı clientId daha önce gönderildi (idempotent — mevcut kayıt döner)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/RouteListItem'
+
+  /routes/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    get:
+      tags: [Routes]
+      summary: Rota detayı
+      operationId: getRoute
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Rota detayı
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/RouteListItem'
+        '404':
+          description: Bulunamadı
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+
+    patch:
+      tags: [Routes]
+      summary: Rota güncelle (başlık, açıklama, görünürlük)
+      operationId: updateRoute
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                title:
+                  type: string
+                  maxLength: 120
+                description:
+                  type: string
+                  maxLength: 2000
+                  nullable: true
+                visibility:
+                  type: string
+                  enum: [PRIVATE, FOLLOWERS, PUBLIC]
+      responses:
+        '200':
+          description: Güncellenmiş rota
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/RouteListItem'
+
+    delete:
+      tags: [Routes]
+      summary: Rotayı sil (soft delete)
+      operationId: deleteRoute
+      security:
+        - bearerAuth: []
+      responses:
+        '204':
+          description: Silindi
+
+  # ── Countries ──
+  /countries:
+    get:
+      tags: [Geo]
+      summary: Harita verisi — tüm ülkelerin yoğunluk skorları
+      operationId: getCountries
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Ülke yoğunluk listesi (harita boyaması için)
+          headers:
+            ETag:
+              schema:
+                type: string
+              description: Cache doğrulama
+            Cache-Control:
+              schema:
+                type: string
+              example: max-age=60, private
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/CountryMapItem'
+
+  /countries/{iso}:
+    parameters:
+      - name: iso
+        in: path
+        required: true
+        schema:
+          type: string
+          minLength: 2
+          maxLength: 2
+        example: TR
+
+    get:
+      tags: [Geo]
+      summary: Ülke detay — özet, rotalar, damga durumu
+      operationId: getCountryDetail
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Ülke detay
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/CountryDetail'
+        '404':
+          description: Ülke bulunamadı
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+
+  /countries/{iso}/quests:
+    parameters:
+      - name: iso
+        in: path
+        required: true
+        schema:
+          type: string
+          minLength: 2
+          maxLength: 2
+        example: TR
+
+    get:
+      tags: [Quests]
+      summary: Ülkeye ait görevler ve ilerleme yüzdeleri
+      operationId: getCountryQuests
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Görev listesi
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/QuestProgress'
+
+  /countries/{iso}/stamp:
+    parameters:
+      - name: iso
+        in: path
+        required: true
+        schema:
+          type: string
+          minLength: 2
+          maxLength: 2
+        example: TR
+
+    post:
+      tags: [Stamps]
+      summary: Pasaport damgası bas
+      operationId: earnStamp
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Damga zaten mevcut (idempotent)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/PassportStamp'
+        '201':
+          description: Yeni damga basıldı
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/PassportStamp'
+        '409':
+          description: Görevler tamamlanmadan damga basılamaz
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+              example:
+                error:
+                  code: QUESTS_INCOMPLETE
+                  message: Tüm görevler tamamlanmadan damga basılamaz
+                  details:
+                    completedCount: 2
+                    totalCount: 3
+
+  # ── Feed ──
+  /feed:
+    get:
+      tags: [Social]
+      summary: Sosyal akış
+      operationId: getFeed
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: scope
+          in: query
+          schema:
+            type: string
+            enum: [following, discover]
+            default: following
+        - name: cursor
+          in: query
+          schema:
+            type: string
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 50
+            default: 20
+      responses:
+        '200':
+          description: Akış öğeleri
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/FeedItem'
+                  meta:
+                    $ref: '#/components/schemas/PaginationMeta'
+
+  # ── Users ──
+  /users/{handle}:
+    parameters:
+      - name: handle
+        in: path
+        required: true
+        schema:
+          type: string
+        example: alice_wanders
+
+    get:
+      tags: [Users]
+      summary: Kullanıcı profili
+      operationId: getUserProfile
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Kullanıcı profili ve istatistikler
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    allOf:
+                      - $ref: '#/components/schemas/UserPublic'
+                      - type: object
+                        properties:
+                          stats:
+                            $ref: '#/components/schemas/UserStats'
+                          followerCount:
+                            type: integer
+                            example: 128
+                          followingCount:
+                            type: integer
+                            example: 84
+                          isFollowing:
+                            type: boolean
+                            example: false
+                          recentStamps:
+                            type: array
+                            maxItems: 6
+                            items:
+                              $ref: '#/components/schemas/PassportStamp'
+        '404':
+          description: Kullanıcı bulunamadı
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+
+# ─────────────────────── TAGS ───────────────────────
+tags:
+  - name: Health
+    description: Sunucu sağlık kontrolü
+  - name: Auth
+    description: Kimlik doğrulama ve yetkilendirme
+  - name: Users
+    description: Kullanıcı profilleri ve istatistikler
+  - name: Routes
+    description: Seyahat rotaları
+  - name: Geo
+    description: Ülke verileri ve yoğunluk haritası
+  - name: Quests
+    description: Görev motoru
+  - name: Stamps
+    description: Pasaport damgaları
+  - name: Social
+    description: Sosyal akış ve etkileşimler
