@@ -15,40 +15,42 @@
     "db:push": "prisma db push",
     "db:seed": "tsx prisma/seed.ts",
     "db:studio": "prisma studio",
+    "mock": "prism mock ../docs/openapi.yaml --port 3001 --cors",
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@wanderprint/shared": "workspace:*",
     "@prisma/client": "^5.20.0",
-    "express": "^4.19.2",
+    "@wanderprint/shared": "workspace:*",
     "argon2": "^0.40.3",
     "bullmq": "^5.13.2",
     "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "express-rate-limit": "^7.4.1",
     "helmet": "^8.0.0",
     "ioredis": "^5.4.1",
     "jsonwebtoken": "^9.0.2",
+    "multer": "^1.4.5-lts.1",
     "pino": "^9.4.0",
     "pino-http": "^10.3.0",
-    "express-rate-limit": "^7.4.1",
     "uuid": "^10.0.0",
-    "zod": "^3.23.8",
-    "multer": "^1.4.5-lts.1",
-    "dotenv": "^16.4.5"
+    "zod": "^3.23.8"
   },
   "devDependencies": {
+    "@stoplight/prism-cli": "^5.16.0",
     "@types/cors": "^2.8.17",
     "@types/express": "^4.17.21",
     "@types/jsonwebtoken": "^9.0.7",
     "@types/multer": "^1.4.12",
     "@types/node": "^22.5.4",
+    "@types/supertest": "^6.0.2",
     "@types/uuid": "^10.0.0",
+    "pino-pretty": "^11.2.2",
     "prisma": "^5.20.0",
+    "supertest": "^7.0.0",
     "tsup": "^8.3.0",
     "tsx": "^4.19.1",
     "typescript": "^5.5.4",
-    "vitest": "^2.1.1",
-    "supertest": "^7.0.0",
-    "@types/supertest": "^6.0.2",
-    "pino-pretty": "^11.2.2"
+    "vitest": "^2.1.1"
   }
 }

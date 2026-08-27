@@ -6,7 +6,7 @@
 
 ## İçindekiler
 
-1. [Ürün Vizyonu](#1-ürün-vizyonu)
+1. [Ürün Vizyonu](#1-ürün-vizyonu)0
 2. [Teknoloji Kararları ve Gerekçeleri](#2-teknoloji-kararları-ve-gerekçeleri)
 3. [Sistem Mimarisi](#3-sistem-mimarisi)
 4. [Repo Yapısı (Monorepo)](#4-repo-yapısı-monorepo)
